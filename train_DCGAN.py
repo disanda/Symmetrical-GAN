@@ -8,12 +8,12 @@ import os
 import yaml
 import torchvision
 import utils.data_tools as data
-import networks.D2E as net # D2E: 一种通过参数Gscale 和 Dscale4g 控制 G和D参数规模的网络
+import networks.DCGAN as net #通过参数Gscale 和 Dscale4g 控制 G和D参数规模的网络
 import utils.loss_func
 from torchsummary import summary
 import itertools
 import lpips
-from utils.utils as set_seed
+from utils.utils import set_seed
 
 # ==============================================================================
 # =                                   param                                    =
@@ -79,10 +79,10 @@ print('data-size:    '+str(shape))
 # =                                   model                                    =
 # ==============================================================================
 
-G = net.Generator(hidden_dim=512, output_channels=3, image_size=args.img_size,uptimes=1).to(device)
-D = net.Discriminator_SpectrualNorm(hidden_dim=512, input_channels=3, image_size=args.img_size, uptimes=-1).to(device)
-summary(G,(args.z_dim,4,4))
-summary(D,(3,args.img_size,args.img_size))
+G = net.Generator(hidden_dim=512, output_channels=3, image_size=args.img_size,Gscale=args.Gscale).to(device)
+D = net.Discriminator_SpectrualNorm(hidden_dim=512, input_channels=3, image_size=args.img_size, Gscale=args.Gscale, Dscale4G=args.Dscale ).to(device)
+summary(G,(args.z_dim, args.z_out_dim, args.z_out_dim))
+summary(D,(args.img_channels, args.img_size, args.img_size))
 x,y = net.get_parameter_number(G),net.get_parameter_number(D)
 x_GB, y_GB = net.get_para_GByte(x),net.get_para_GByte(y)
 
