@@ -156,7 +156,7 @@ if __name__ == '__main__':
 
             it_d += 1
             for k, v in D_loss_dict.items():
-                writer.add_scalar('D/%s' % k, v.cpu().numpy(), global_step=it_d)
+                writer.add_scalar('D/%s' % k, v, global_step=it_d)
 
 #-----------training G-----------
             x_fake_d_logit_2 = D(x_fake)
@@ -168,12 +168,12 @@ if __name__ == '__main__':
             it_g += 1
             G_loss_dict = {'g_loss': G_loss.item()}
             for k, v in G_loss_dict.items():
-                writer.add_scalar('G/%s' % k, v.cpu().numpy(), global_step=it_g)
+                writer.add_scalar('G/%s' % k, v, global_step=it_g)
 
 #--------------save---------------
             if it_g%200==0:
                 with torch.no_grad():
-                    torchvision.utils.save_image(x_fake,sample_dir+'/ep%d_it%d.jpg'%(ep,it_g), nrow=8)
+                    torchvision.utils.save_image(x_fake*0.5+0.5,sample_dir+'/ep%d_it%d.jpg'%(ep,it_g), nrow=8)
                     with open(output_dir+'/loss.txt','a+') as f:
                         print('G_loss:'+str(G_loss.item())+'------'+'D_loss'+str(D_loss.item()),file=f)
 
