@@ -30,7 +30,7 @@ parser.add_argument('--gradient_penalty_mode', default='none', choices=['none', 
 parser.add_argument('--gradient_penalty_sample_mode', default='line', choices=['line', 'real', 'fake', 'dragan'])
 parser.add_argument('--gradient_penalty_weight', type=float, default=10.0)
 parser.add_argument('--experiment_name', default=None)
-parser.add_argument('--img_size',type=int, default=256)
+parser.add_argument('--img_size',type=int, default=128) # STL:128, CelebA-HQ: 256
 parser.add_argument('--img_channels', type=int, default=3)# RGB:3 ,L:1
 parser.add_argument('--dataname', default='STL10') #choices=['mnist','cifar10', 'STL10',  'celeba','Celeba_HQ'] and so on.
 parser.add_argument('--datapath', default='./dataset/data_stl/') 
@@ -149,7 +149,7 @@ if __name__ == '__main__':
             D_loss = (x_real_d_loss + x_fake_d_loss) + gp * args.gradient_penalty_weight
 
             D_optimizer.zero_grad()
-            D_loss.backward(retain_graph=True)
+            D_loss.backward()
             D_optimizer.step()
 
             D_loss_dict={'d_loss': x_real_d_loss.item() + x_fake_d_loss.item(), 'gp': gp.item()}
@@ -162,7 +162,7 @@ if __name__ == '__main__':
             x_fake_d_logit_2 = D(x_fake)
             G_loss = g_loss_fn(x_fake_d_logit_2) #渐进式loss
             G_optimizer.zero_grad()
-            G_loss.backward(retain_graph=True)
+            G_loss.backward()
             G_optimizer.step()
 
             it_g += 1
