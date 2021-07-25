@@ -32,11 +32,11 @@ parser.add_argument('--gradient_penalty_weight', type=float, default=10.0)
 parser.add_argument('--experiment_name', default='none')
 parser.add_argument('--img_size',type=int, default=256)
 parser.add_argument('--img_channels', type=int, default=3)# RGB:3 ,L:1
-parser.add_argument('--dataname', default='Celeba_HQ') #choices=['mnist','cifar10', 'STL10',  'celeba','Celeba_HQ'] and so on.
+parser.add_argument('--dataname', default='STL10') #choices=['mnist','cifar10', 'STL10',  'celeba','Celeba_HQ'] and so on.
 parser.add_argument('--datapath', default='./dataset/data_stl/') 
 parser.add_argument('--data_flag', type=bool, default=False) 
-parser.add_argument('--z_dim', type=int, default=256) 
-parser.add_argument('--z_out_dim', type=int, default=1) # 1 or 4
+parser.add_argument('--z_dim', type=int, default=256) # input to G
+parser.add_argument('--z_out_dim', type=int, default=1) # output from D, 1 or z_dim
 parser.add_argument('--Gscale', type=int, default=8) # scale：网络隐藏层维度数,默认为 image_size//8 * image_size 
 parser.add_argument('--Dscale', type=int, default=1) 
 args = parser.parse_args()
@@ -79,8 +79,8 @@ print('data-size:    '+str(shape))
 # =                                   model                                    =
 # ==============================================================================
 
-G = net.Generator(hidden_dim=512, output_channels=3, image_size=args.img_size,Gscale=args.Gscale).to(device)
-D = net.Discriminator_SpectrualNorm(hidden_dim=512, input_channels=3, image_size=args.img_size, Gscale=args.Gscale, Dscale4G=args.Dscale ).to(device)
+G = net.G(input_dim=args.z_dim, output_dim=args.img_channels, image_size=args.img_size,Gscale=args.Gscale).to(device)
+D = net.D(outpit_dim=args.z_out_dim, input_dim=args.img_channels, image_size=args.img_size, Gscale=args.Gscale, Dscale4G=args.Dscale ).to(device)
 summary(G,(args.z_dim, args.z_out_dim, args.z_out_dim))
 summary(D,(args.img_channels, args.img_size, args.img_size))
 x,y = net.get_parameter_number(G),net.get_parameter_number(D)
