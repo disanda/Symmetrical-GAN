@@ -9,7 +9,7 @@ import yaml
 import torchvision
 import utils.data_tools as data
 import networks.DCGAN as net #通过参数Gscale 和 Dscale4g 控制 G和D参数规模的网络
-import utils.loss_func
+import utils.loss_func as loss_func
 from torchsummary import summary
 import itertools
 import lpips
@@ -29,7 +29,7 @@ parser.add_argument('--adversarial_loss_mode', default='gan', choices=['gan', 'h
 parser.add_argument('--gradient_penalty_mode', default='none', choices=['none', '1-gp', '0-gp', 'lp'])
 parser.add_argument('--gradient_penalty_sample_mode', default='line', choices=['line', 'real', 'fake', 'dragan'])
 parser.add_argument('--gradient_penalty_weight', type=float, default=10.0)
-parser.add_argument('--experiment_name', default='none')
+parser.add_argument('--experiment_name', default=None)
 parser.add_argument('--img_size',type=int, default=256)
 parser.add_argument('--img_channels', type=int, default=3)# RGB:3 ,L:1
 parser.add_argument('--dataname', default='STL10') #choices=['mnist','cifar10', 'STL10',  'celeba','Celeba_HQ'] and so on.
@@ -44,7 +44,7 @@ args = parser.parse_args()
 # output_dir
 
 if args.experiment_name == None:
-    args.experiment_name = 'STL10'
+    args.experiment_name = 'STL10-Gscale8-Dscale1'
 
 if not os.path.exists('output'):
     os.mkdir('output')
@@ -80,7 +80,7 @@ print('data-size:    '+str(shape))
 # ==============================================================================
 
 G = net.G(input_dim=args.z_dim, output_dim=args.img_channels, image_size=args.img_size,Gscale=args.Gscale).to(device)
-D = net.D(outpit_dim=args.z_out_dim, input_dim=args.img_channels, image_size=args.img_size, Gscale=args.Gscale, Dscale4G=args.Dscale ).to(device)
+D = net.D(output_dim=args.z_out_dim, input_dim=args.img_channels, image_size=args.img_size, Gscale=args.Gscale, Dscale4G=args.Dscale ).to(device)
 summary(G,(args.z_dim, args.z_out_dim, args.z_out_dim))
 summary(D,(args.img_channels, args.img_size, args.img_size))
 x,y = net.get_parameter_number(G),net.get_parameter_number(D)
