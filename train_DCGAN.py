@@ -9,11 +9,11 @@ import yaml
 import torchvision
 import utils.data_tools as data
 import networks.D2E as net # D2E: 一种通过参数Gscale 和 Dscale4g 控制 G和D参数规模的网络
-import loss_func
+import utils.loss_func
 from torchsummary import summary
 import itertools
 import lpips
-import randomF as rf
+from utils.utils as set_seed
 
 # ==============================================================================
 # =                                   param                                    =
@@ -21,10 +21,10 @@ import randomF as rf
 
 # command line
 parser = argparse.ArgumentParser(description='the training args')
-parser.add_argument('--epochs', type=int, default=100)
+parser.add_argument('--epochs', type=int, default=10)
 parser.add_argument('--lr', type=float, default=0.0002)
 parser.add_argument('--beta_1', type=float, default=0.5)
-parser.add_argument('--batch_size', type=int, default=30)
+parser.add_argument('--batch_size', type=int, default=10)
 parser.add_argument('--adversarial_loss_mode', default='gan', choices=['gan', 'hinge_v1', 'hinge_v2', 'lsgan', 'wgan'])
 parser.add_argument('--gradient_penalty_mode', default='none', choices=['none', '1-gp', '0-gp', 'lp'])
 parser.add_argument('--gradient_penalty_sample_mode', default='line', choices=['line', 'real', 'fake', 'dragan'])
@@ -33,9 +33,9 @@ parser.add_argument('--experiment_name', default='none')
 parser.add_argument('--img_size',type=int, default=256)
 parser.add_argument('--img_channels', type=int, default=3)# RGB:3 ,L:1
 parser.add_argument('--dataname', default='Celeba_HQ') #choices=['mnist','cifar10', 'STL10',  'celeba','Celeba_HQ'] and so on.
-parser.add_argument('--datapath', default='./dataset') 
+parser.add_argument('--datapath', default='./dataset/data_stl/') 
 parser.add_argument('--data_flag', type=bool, default=False) 
-parser.add_argument('--z_dim', type=int, default=512)
+parser.add_argument('--z_dim', type=int, default=256) 
 parser.add_argument('--z_out_dim', type=int, default=1) # 1 or 4
 parser.add_argument('--Gscale', type=int, default=8) # scale：网络隐藏层维度数,默认为 image_size//8 * image_size 
 parser.add_argument('--Dscale', type=int, default=1) 
@@ -44,7 +44,7 @@ args = parser.parse_args()
 # output_dir
 
 if args.experiment_name == None:
-    args.experiment_name = '512to512_256piexl_4*4input_2'
+    args.experiment_name = 'STL10'
 
 if not os.path.exists('output'):
     os.mkdir('output')
@@ -118,20 +118,24 @@ if __name__ == '__main__':
     # main loop
     writer = tensorboardX.SummaryWriter(os.path.join(output_dir, 'summaries'))
 
+    seed_flag = 0
+
     G.train()
     D.train()
     for ep in tqdm.trange(args.epochs, desc='Epoch Loop'):
         it_d, it_g = 0, 0
         for x_real in tqdm.tqdm(data_loader, desc='Inner Epoch Loop'):
-            if args.data_flag == True # 'mnist' or 'fashion_mnist':
+            if args.data_flag == True: # 'mnist' or 'fashion_mnist':
                 x_real = x_real[0].to(device) # x_real[1] is flag
             else:
                 x_real = x_real.to(device)
 
+            set_seed(seed_flag)
             if args.z_out_dim == 1:
                 z = torch.randn(args.batch_size, args.z_dim, 1, 1).to(device)
             else: 
                 z = torch.randn(args.batch_size, args.z_dim, 4, 4).to(device) #PGGAN-StyleGAN的输入
+            seed_flag = seed_flag + 1
 
 #--------training D-----------
             x_fake = G(z) #G(z)[8]
