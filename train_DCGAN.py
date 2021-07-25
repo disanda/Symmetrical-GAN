@@ -34,7 +34,7 @@ parser.add_argument('--img_size',type=int, default=128) # STL:128, CelebA-HQ: 25
 parser.add_argument('--img_channels', type=int, default=3)# RGB:3 ,L:1
 parser.add_argument('--dataname', default='STL10') #choices=['mnist','cifar10', 'STL10',  'celeba','Celeba_HQ'] and so on.
 parser.add_argument('--datapath', default='./dataset/data_stl/') 
-parser.add_argument('--data_flag', type=bool, default=False) 
+parser.add_argument('--data_flag', type=bool, default=True) # True: STL10, False: Celeba_HQ
 parser.add_argument('--z_dim', type=int, default=256) # input to G
 parser.add_argument('--z_out_dim', type=int, default=1) # output from D, 1 or z_dim
 parser.add_argument('--Gscale', type=int, default=8) # scale：网络隐藏层维度数,默认为 image_size//8 * image_size 
@@ -156,7 +156,7 @@ if __name__ == '__main__':
 
             it_d += 1
             for k, v in D_loss_dict.items():
-                writer.add_scalar('D/%s' % k, v.data.cpu().numpy(), global_step=it_d)
+                writer.add_scalar('D/%s' % k, v.cpu().numpy(), global_step=it_d)
 
 #-----------training G-----------
             x_fake_d_logit_2 = D(x_fake)
@@ -168,7 +168,7 @@ if __name__ == '__main__':
             it_g += 1
             G_loss_dict = {'g_loss': G_loss.item()}
             for k, v in G_loss_dict.items():
-                writer.add_scalar('G/%s' % k, v.data.cpu().numpy(), global_step=it_g)
+                writer.add_scalar('G/%s' % k, v.cpu().numpy(), global_step=it_g)
 
 #--------------save---------------
             if it_g%200==0:
