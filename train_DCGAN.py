@@ -24,7 +24,7 @@ parser = argparse.ArgumentParser(description='the training args')
 parser.add_argument('--epochs', type=int, default=10)
 parser.add_argument('--lr', type=float, default=0.0002)
 parser.add_argument('--beta_1', type=float, default=0.5)
-parser.add_argument('--batch_size', type=int, default=10)
+parser.add_argument('--batch_size', type=int, default=64)
 parser.add_argument('--adversarial_loss_mode', default='gan', choices=['gan', 'hinge_v1', 'hinge_v2', 'lsgan', 'wgan'])
 parser.add_argument('--gradient_penalty_mode', default='none', choices=['none', '1-gp', '0-gp', 'lp'])
 parser.add_argument('--gradient_penalty_sample_mode', default='line', choices=['line', 'real', 'fake', 'dragan'])
@@ -173,7 +173,7 @@ if __name__ == '__main__':
 #--------------save---------------
             if it_g%200==0:
                 with torch.no_grad():
-                    torchvision.utils.save_image(x_fake*0.5+0.5,sample_dir+'/ep%d_it%d.jpg'%(ep,it_g), nrow=8)
+                    torchvision.utils.save_image(x_fake*0.5+0.5,sample_dir+'/ep%d_it%d.jpg'%(ep,it_g), nrow=int(np.sqrt(args.batch_size)))
                     with open(output_dir+'/loss.txt','a+') as f:
                         print('G_loss:'+str(G_loss.item())+'------'+'D_loss'+str(D_loss.item()),file=f)
 
@@ -198,7 +198,7 @@ if __name__ == '__main__':
                 if isinstance(layer, torch.nn.ConvTranspose2d):
                     #print(z.shape)
                     x1 = z.transpose(0, 1)  # C，B, H, W  ---> B，C, H, W
-                    img_grid = torchvision.utils.make_grid(x1, normalize=True, scale_each=True, nrow=30)  # B，C, H, W
+                    img_grid = torchvision.utils.make_grid(x1, normalize=True, scale_each=True, nrow=int(np.sqrt(args.batch_size)))  # B，C, H, W
                     writer.add_image('feature_maps_G_%d_%s'%(ep,name), img_grid)
                     #torchvision.utils.save_image(x1,'feature_maps%s.png'%name, nrow=100)
 
@@ -208,6 +208,6 @@ if __name__ == '__main__':
                 x = layer(x)
                 if isinstance(layer, torch.nn.Conv2d):
                     x1 = x.transpose(0, 1)  # C，B, H, W  ---> B，C, H, W
-                    img_grid = torchvision.utils.make_grid(x1, normalize=True, scale_each=True, nrow=30)  # B，C, H, W
+                    img_grid = torchvision.utils.make_grid(x1, normalize=True, scale_each=True, nrow=int(np.sqrt(args.batch_size)))  # B，C, H, W
                     writer.add_image('feature_maps_D_%d_%s'%(ep,name), img_grid)
                     #torchvision.utils.save_image(x1,'./D_feature_maps%s.png'%name, nrow=20)
