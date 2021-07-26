@@ -24,27 +24,30 @@ parser = argparse.ArgumentParser(description='the training args')
 parser.add_argument('--epochs', type=int, default=10)
 parser.add_argument('--lr', type=float, default=0.0002)
 parser.add_argument('--beta_1', type=float, default=0.5)
-parser.add_argument('--batch_size', type=int, default=160) #STL:625
+parser.add_argument('--batch_size', type=int, default=30) #STL:100
 parser.add_argument('--adversarial_loss_mode', default='gan', choices=['gan', 'hinge_v1', 'hinge_v2', 'lsgan', 'wgan'])
 parser.add_argument('--gradient_penalty_mode', default='none', choices=['none', '1-gp', '0-gp', 'lp'])
 parser.add_argument('--gradient_penalty_sample_mode', default='line', choices=['line', 'real', 'fake', 'dragan'])
 parser.add_argument('--gradient_penalty_weight', type=float, default=10.0)
 parser.add_argument('--experiment_name', default=None)
-parser.add_argument('--img_size',type=int, default=128) # STL:128, CelebA-HQ: 256
+parser.add_argument('--img_size',type=int, default=256) # STL:128, CelebA-HQ: 256
 parser.add_argument('--img_channels', type=int, default=3)# RGB:3 ,L:1
-parser.add_argument('--dataname', default='STL10') #choices=['mnist','cifar10', 'STL10',  'celeba','Celeba_HQ'] and so on.
-parser.add_argument('--datapath', default='./dataset/data_stl/') 
+parser.add_argument('--dataname', default='Celeba_HQ') #choices=['mnist','cifar10', 'STL10',  'celeba','Celeba_HQ'] and so on.
+parser.add_argument('--datapath', default='./dataset/CelebbAmask-HQ/') 
 parser.add_argument('--data_flag', type=bool, default=True) # True: STL10, False: Celeba_HQ
-parser.add_argument('--z_dim', type=int, default=256) # input to G
+parser.add_argument('--z_dim', type=int, default=128) # input to G
 parser.add_argument('--z_out_dim', type=int, default=1) # output from D, 1 or z_dim
 parser.add_argument('--Gscale', type=int, default=16) # scale：网络隐藏层维度数,默认为 image_size//8 * image_size 
 parser.add_argument('--Dscale', type=int, default=1) 
+parser.add_argument('--BN', type=bool, default=False) 
+parser.add_argument('--hidden_scale', type=int, default=2) 
 args = parser.parse_args()
 
 # output_dir
 
 if args.experiment_name == None:
-    args.experiment_name = 'STL10-Gscale16-Dscale1'
+    args.experiment_name = '%s-Gscale%d-Dscale%d-Zdim%d-ZoutDim%d-Hidden_Scale%d'//
+    %(args.dataname,args.Gscale,args.Dscale,args.z_dim,args.z_out_dim,args.hidden_scale)
 
 if not os.path.exists('output'):
     os.mkdir('output')
@@ -79,8 +82,8 @@ print('data-size:    '+str(shape))
 # =                                   model                                    =
 # ==============================================================================
 
-G = net.G(input_dim=args.z_dim, output_dim=args.img_channels, image_size=args.img_size,Gscale=args.Gscale).to(device)
-D = net.D(output_dim=args.z_out_dim, input_dim=args.img_channels, image_size=args.img_size, Gscale=args.Gscale, Dscale4G=args.Dscale ).to(device)
+G = net.G(input_dim=args.z_dim, output_dim=args.img_channels, image_size=args.img_size, Gscale=args.Gscale, hidden_scale=args.hidden_scale, BN = args.BN ).to(device)
+D = net.D(output_dim=args.z_out_dim, input_dim=args.img_channels, image_size=args.img_size, Gscale=args.Gscale, Dscale4G=args.Dscale, hidden_scale=args.hidden_scale  ).to(device)
 summary(G,(args.z_dim, args.z_out_dim, args.z_out_dim))
 summary(D,(args.img_channels, args.img_size, args.img_size))
 x,y = net.get_parameter_number(G),net.get_parameter_number(D)
@@ -109,6 +112,8 @@ def sample(z):
     G.eval()
     return G(z)
 
+mse_loss = torch.nn.MSELoss()
+
 # ==============================================================================
 # =                                    Train                                     =
 # ==============================================================================
@@ -131,10 +136,7 @@ if __name__ == '__main__':
                 x_real = x_real.to(device)
 
             set_seed(seed_flag)
-            if args.z_out_dim == 1:
-                z = torch.randn(args.batch_size, args.z_dim, 1, 1).to(device)
-            else: 
-                z = torch.randn(args.batch_size, args.z_dim, 4, 4).to(device) #PGGAN-StyleGAN的输入
+            z = torch.randn(args.batch_size, args.z_dim, 1, 1).to(device)
             seed_flag = seed_flag + 1
 
 #--------training D-----------
@@ -149,14 +151,14 @@ if __name__ == '__main__':
             D_loss = (x_real_d_loss + x_fake_d_loss) + gp * args.gradient_penalty_weight
 
             D_optimizer.zero_grad()
-            D_loss.backward()
+            D_loss.backward(retain_graph=True)
             D_optimizer.step()
 
             D_loss_dict={'d_loss': x_real_d_loss.item() + x_fake_d_loss.item(), 'gp': gp.item()}
 
             it_d += 1
             for k, v in D_loss_dict.items():
-                writer.add_scalar('D/%s' % k, v, global_step=it_d)
+                writer.add_scalar('D/%s' % k, v, global_step=it_d+ep*len(data_loader))
 
 #-----------training G-----------
             x_fake_d_logit_2 = D(x_fake)
@@ -168,14 +170,27 @@ if __name__ == '__main__':
             it_g += 1
             G_loss_dict = {'g_loss': G_loss.item()}
             for k, v in G_loss_dict.items():
-                writer.add_scalar('G/%s' % k, v, global_step=it_g)
+                writer.add_scalar('G/%s' % k, v, global_step=it_g+ep*len(data_loader))
+
+#-----------training D2E-----------
+            # D2E_loss = mse_loss(x_fake,x_true)
+            # D_optimizer.zero_grad()
+            # D2E_loss.backward()
+            # D_optimizer.step()
+
+            # it_g += 1
+            # D2E_loss_dict = {'d2e_loss': D2E_loss.item()}
+            # for k, v in D2E_loss_dict.items():
+            #     writer.add_scalar('G/%s' % k, v, global_step=it_d+ep*len(data_loader))
+
+
 
 #--------------save---------------
             if it_g%100==0:
                 with torch.no_grad():
                     torchvision.utils.save_image(x_fake*0.5+0.5,sample_dir+'/ep%d_it%d.jpg'%(ep,it_g), nrow=int(np.sqrt(args.batch_size)))
                     with open(output_dir+'/loss.txt','a+') as f:
-                        print('ep_%d_iter_%d'%(ep.it_g))
+                        print('ep_%d_iter_%d'%(ep,it_g),file=f)
                         print('G_loss:'+str(G_loss.item())+'------'+'D_loss'+str(D_loss.item()),file=f)
 
         # save checkpoint

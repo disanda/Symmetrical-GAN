@@ -16,7 +16,7 @@ def get_para_GByte(parameter_number):
      return {'Total_GB': x, 'Trainable_BG': y}
 
 class G(nn.Module): #Generator
-    def __init__(self, input_dim=128, output_dim=3, image_size=128, Gscale=16): # output_dim = image_channels
+    def __init__(self, input_dim=128, output_dim=3, image_size=128, Gscale=16,  hidden_scale = 2, BN = False): # output_dim = image_channels
         super().__init__()
         layers = []
         up_times = math.log(image_size,2)- 3 # 输入为4*4时,another_times=1
@@ -25,15 +25,20 @@ class G(nn.Module): #Generator
 
         # 1: 1x1 -> 4x4
         layers.append(nn.ConvTranspose2d(input_dim, first_hidden_dim, kernel_size=4,stride=1,padding=0,bias=bias_flag)) # 1*1 input -> 4*4
-        layers.append(nn.InstanceNorm2d(first_hidden_dim, affine=False, eps=1e-8))
+        if BN == True:
+            layers.append(nn.BatchNorm2d(int(hidden_dim/hidden_scale)))
+        else:
+            layers.append(nn.InstanceNorm2d(first_hidden_dim, affine=False, eps=1e-8))
         layers.append(nn.ReLU())
 
         # 2: upsamplings, (1x1) -> 4x4 -> 8x8 -> 16x16 -> 32*32 -> 64 -> 128 -> 256
         hidden_dim = first_hidden_dim
         while up_times>0:
-            layers.append(nn.ConvTranspose2d(hidden_dim, hidden_dim//2, kernel_size=4, stride=2, padding=1 ,bias=bias_flag))
-            layers.append(nn.BatchNorm2d(hidden_dim//2))
-            #layers.append(nn.InstanceNorm2d(hidden_dim//2, affine=False, eps=1e-8))
+            layers.append(nn.ConvTranspose2d(hidden_dim, int(hidden_dim/hidden_scale), kernel_size=4, stride=2, padding=1 ,bias=bias_flag))
+            if BN == True:
+                layers.append(nn.BatchNorm2d(int(hidden_dim/hidden_scale)))
+            else:
+                layers.append(nn.InstanceNorm2d(int(hidden_dim/hidden_scale), affine=False, eps=1e-8))
             layers.append(nn.ReLU())
             up_times = up_times - 1
             hidden_dim = hidden_dim // 2
@@ -50,7 +55,7 @@ class G(nn.Module): #Generator
         return x
 
 class D(nn.Module): # Discriminator with SpectrualNorm
-    def __init__(self, output_dim=128, input_dim=3, image_size=128, Gscale=16, Dscale4G=1): #新版的Dscale4G是相对G缩小的倍数
+    def __init__(self, output_dim=128, input_dim=3, image_size=128, Gscale=16, Dscale4G=1, hidden_scale = 2): #新版的Dscale4G是相对G缩小的倍数
         super().__init__()
         layers=[]
         up_times = math.log(image_size,2)- 3
@@ -64,7 +69,7 @@ class D(nn.Module): # Discriminator with SpectrualNorm
         # 2: 64*64 > 4*4
         hidden_dim = first_hidden_dim
         while up_times>0:  
-            layers.append(spectral_norm(nn.Conv2d(hidden_dim, hidden_dim*2, kernel_size=4, stride=2, padding=1, bias=bias_flag)))
+            layers.append(spectral_norm(nn.Conv2d(hidden_dim, int(hidden_dim*hidden_scale), kernel_size=4, stride=2, padding=1, bias=bias_flag)))
             layers.append(nn.LeakyReLU(0.2, inplace=True))
             hidden_dim = hidden_dim * 2
             up_times = up_times - 1
@@ -78,6 +83,6 @@ class D(nn.Module): # Discriminator with SpectrualNorm
 
     def forward(self, x):
         y = self.net(x) # [1,1,1,1]
-        y = y.mean()
+        #y = y.mean()
         return y 
 
